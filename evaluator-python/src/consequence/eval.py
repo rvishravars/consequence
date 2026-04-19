@@ -12,6 +12,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 
 from consequence.agent import run_agent
 from consequence.metrics import combined_score
+from consequence.llm_evaluator import make_llm_judge
 from consequence.types import EvalResult, EvalTask, SuiteReport
 
 _DEFAULT_PASS_THRESHOLD = 0.5
@@ -23,6 +24,7 @@ async def run_eval(
     client: AsyncOpenAI | None = None,
     model: str = "gemma4",
     pass_threshold: float = _DEFAULT_PASS_THRESHOLD,
+    llm_judge: bool = False,
 ) -> EvalResult:
     """Run a single :class:`EvalTask` against an MCP server.
 
@@ -70,6 +72,9 @@ async def run_eval(
     # Score the result
     if task.evaluator is not None:
         score = task.evaluator(result)
+    elif llm_judge:
+        judge = make_llm_judge()
+        score = judge(result, task)
     else:
         score = combined_score(result, task)
 
@@ -108,6 +113,7 @@ class EvalSuite:
         client: AsyncOpenAI | None = None,
         model: str = "gemma4",
         pass_threshold: float = _DEFAULT_PASS_THRESHOLD,
+        llm_judge: bool = False,
     ) -> SuiteReport:
         """Run all tasks and return a :class:`SuiteReport`."""
         server = self.server_factory()
@@ -119,6 +125,7 @@ class EvalSuite:
                 client=client,
                 model=model,
                 pass_threshold=pass_threshold,
+                llm_judge=llm_judge,
             )
             results.append(result)
 
@@ -146,10 +153,12 @@ async def run_suite(
     client: AsyncOpenAI | None = None,
     model: str = "gemma4",
     pass_threshold: float = _DEFAULT_PASS_THRESHOLD,
+    llm_judge: bool = False,
 ) -> SuiteReport:
     """Convenience wrapper to run a suite (mirrors :meth:`EvalSuite.run`)."""
     return await suite.run(
         client=client,
         model=model,
         pass_threshold=pass_threshold,
+        llm_judge=llm_judge,
     )

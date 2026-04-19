@@ -33,6 +33,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="Minimum score to mark a task as passed (default: 0.5)",
     )
+    parser.add_argument(
+        "--llm-judge",
+        action="store_true",
+        help="Use an LLM (as-a-judge) to score results instead of deterministic metrics",
+    )
     return parser
 
 
@@ -55,6 +60,7 @@ async def _run(args: argparse.Namespace) -> int:
             client=client,
             model=args.model,
             pass_threshold=args.pass_threshold,
+            llm_judge=args.llm_judge,
         )
         print_suite_report(report)
         if report.failed > 0 or report.errored > 0:

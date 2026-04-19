@@ -139,6 +139,28 @@ from consequence.evals import calculator_suite, database_suite
 | `tool_name_match` | Fraction of expected tools that were called |
 | `combined_score` | Default composite (tool + output score) |
 
+### LLM-as-a-Judge
+
+You can use a separate LLM (the "Judge") to evaluate the agent's performance. This is useful for complex tasks where simple string matching isn't enough.
+
+#### Configuration
+
+Set the following environment variables to configure the judge:
+
+```bash
+export JUDGE_MODEL=llama3.2        # The model that will score the results
+export JUDGE_BASE_URL=http://...   # Endpoint for the judge model
+export JUDGE_API_KEY=...           # optional
+```
+
+#### Usage
+
+Run the CLI with the `--llm-judge` flag:
+
+```bash
+sudo docker compose run --rm python-eval --llm-judge
+```
+
 ### Python Project Structure
 
 ```
