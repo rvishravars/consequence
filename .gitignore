@@ -8,6 +8,9 @@ build/
 .env
 *.egg
 
+# Maven build output
+target/
+
 # Compiled class file
 *.class
 

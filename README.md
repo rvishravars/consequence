@@ -1,8 +1,14 @@
 # consequence
 
+A multi-language agent evaluation toolkit.
+
+---
+
+## Python: MCP-backed Agent Eval
+
 An **MCP-backed agent evaluation framework** for testing LLM agents that use the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/).
 
-## Overview
+### Overview
 
 `consequence` lets you define evaluation tasks, run an Anthropic Claude agent against a live MCP server, and score the results — all in a few lines of Python.
 
@@ -16,7 +22,7 @@ EvalTask → EvalSuite → run_suite() → SuiteReport
          Scoring (metrics)
 ```
 
-## Installation
+### Installation
 
 ```bash
 pip install consequence
@@ -28,9 +34,9 @@ Set your Anthropic API key:
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-## Quick Start
+### Quick Start
 
-### Run built-in suites via CLI
+#### Run built-in suites via CLI
 
 ```bash
 # Run all built-in eval suites
@@ -43,7 +49,7 @@ consequence --suite calculator
 consequence --suite database --model claude-3-5-sonnet-20241022
 ```
 
-### Use the Python API
+#### Use the Python API
 
 ```python
 import asyncio
@@ -86,7 +92,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### Custom evaluators
+#### Custom evaluators
 
 ```python
 from consequence.types import EvalResult, EvalTask
@@ -105,7 +111,7 @@ task = EvalTask(
 )
 ```
 
-## Built-in Servers
+### Built-in Servers
 
 | Server | Tools |
 |--------|-------|
@@ -116,13 +122,13 @@ task = EvalTask(
 from consequence.servers import make_calculator_server, make_database_server
 ```
 
-## Built-in Eval Suites
+### Built-in Eval Suites
 
 ```python
 from consequence.evals import calculator_suite, database_suite
 ```
 
-## Scoring Metrics
+### Scoring Metrics
 
 | Metric | Description |
 |--------|-------------|
@@ -132,7 +138,7 @@ from consequence.evals import calculator_suite, database_suite
 | `tool_name_match` | Fraction of expected tools that were called |
 | `combined_score` | Default composite (tool + output score) |
 
-## Project Structure
+### Python Project Structure
 
 ```
 src/consequence/
@@ -143,20 +149,128 @@ src/consequence/
 ├── reporter.py        # Rich-formatted output
 ├── cli.py             # CLI entry point
 ├── types.py           # EvalTask, EvalResult, SuiteReport
-└── servers/
-    ├── calculator.py  # Built-in calculator MCP server
-    └── database.py    # Built-in mock database MCP server
-src/consequence/evals/
-├── calculator.py      # Built-in calculator eval suite
-└── database.py        # Built-in database eval suite
+├── servers/
+│   ├── calculator.py  # Built-in calculator MCP server
+│   └── database.py    # Built-in mock database MCP server
+└── evals/
+    ├── calculator.py  # Built-in calculator eval suite
+    └── database.py    # Built-in database eval suite
 tests/
 ├── test_eval.py       # Integration tests
 └── test_metrics.py    # Unit tests for scoring metrics
 ```
 
-## Development
+### Python Development
 
 ```bash
 pip install -e ".[dev]"
 pytest
+```
+
+---
+
+## Java: Agent Eval CLI
+
+Agent evaluation tool – a CLI built with **Java 17**, **Spring Shell**, and **Maven**.
+
+Point it at any [OpenAI-compatible](https://platform.openai.com/docs/api-reference/chat) chat-completions endpoint (e.g. Ollama, OpenAI, vLLM) and run structured evaluation suites to measure agent quality.
+
+### Requirements
+
+| Tool | Version |
+|------|---------|
+| JDK  | 17+     |
+| Maven | 3.8+   |
+
+### Build
+
+```bash
+mvn clean package -q
+```
+
+This produces a self-contained fat-jar at `target/consequence-0.1.0-SNAPSHOT.jar`.
+
+### Configuration
+
+Configuration is read from `src/main/resources/application.yml` or from environment variables:
+
+| Environment variable       | Default                          | Description                              |
+|---------------------------|----------------------------------|------------------------------------------|
+| `AGENT_BASE_URL`          | `http://localhost:11434/v1`      | Base URL of the chat-completions endpoint |
+| `AGENT_API_KEY`           | *(empty)*                        | Bearer token / API key (optional)         |
+| `AGENT_MODEL`             | `llama3`                         | Model name sent in the request body       |
+| `AGENT_TIMEOUT_SECONDS`   | `60`                             | HTTP call timeout                         |
+
+### Usage
+
+#### Interactive shell
+
+```bash
+java -jar target/consequence-0.1.0-SNAPSHOT.jar
+```
+
+```
+shell:> eval list --suite sample-eval.json
+shell:> eval run  --suite sample-eval.json
+shell:> eval report --suite sample-eval.json
+```
+
+#### Non-interactive (script mode)
+
+```bash
+java -jar target/consequence-0.1.0-SNAPSHOT.jar \
+     --spring.shell.interactive.enabled=false    \
+     --spring.shell.script.enabled=true          \
+     eval run --suite path/to/my-suite.json
+```
+
+### Eval suite format
+
+An eval suite is a JSON array of evaluation cases:
+
+```json
+[
+  {
+    "id": "c1",
+    "description": "Greeting check",
+    "input": "Say hello in one word.",
+    "expectedOutput": "hello",
+    "scoringMethod": "CONTAINS"
+  },
+  {
+    "id": "c2",
+    "description": "Exact capital city",
+    "input": "What is the capital of France? One word.",
+    "expectedOutput": "Paris",
+    "scoringMethod": "EXACT"
+  },
+  {
+    "id": "c3",
+    "description": "Phone number regex",
+    "input": "Give me a US phone number example.",
+    "expectedPattern": "\\d{3}[-.\\s]?\\d{3}[-.\\s]?\\d{4}",
+    "scoringMethod": "REGEX"
+  },
+  {
+    "id": "c4",
+    "description": "Free-form (always passes)",
+    "input": "Tell me a fun fact.",
+    "scoringMethod": "NONE"
+  }
+]
+```
+
+### Scoring methods
+
+| Method     | Description |
+|------------|-------------|
+| `CONTAINS` | Pass if the agent response contains `expectedOutput` (case-insensitive) |
+| `EXACT`    | Pass if the agent response equals `expectedOutput` after trimming (case-insensitive) |
+| `REGEX`    | Pass if the agent response matches `expectedPattern` |
+| `NONE`     | Always pass – useful for manual review or latency-only benchmarks |
+
+### Run tests
+
+```bash
+mvn test
 ```
