@@ -12,7 +12,7 @@ from mcp import ClientSession
 from consequence.types import ToolCallRecord
 
 _DEFAULT_MODEL = "gemma4"
-_DEFAULT_BASE_URL = os.environ.get("AGENT_BASE_URL", "http://localhost:11434/v1")
+_DEFAULT_BASE_URL = os.environ.get("AGENT_BASE_URL", "http://host.docker.internal:11434/v1")
 _MAX_ITERATIONS = 10
 
 

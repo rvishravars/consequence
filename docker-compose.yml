@@ -6,10 +6,12 @@ services:
     volumes:
       - .:/data
     working_dir: /data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://localhost:11434/v1}
+      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://host.docker.internal:11434/v1}
       - AGENT_API_KEY=${AGENT_API_KEY:-}
-      - AGENT_MODEL=${AGENT_MODEL:-llama3}
+      - AGENT_MODEL=${AGENT_MODEL:-gemma4}
 
   python-eval:
     build:
@@ -20,5 +22,8 @@ services:
     working_dir: /data
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://host.docker.internal:11434/v1}
+      - AGENT_MODEL=${AGENT_MODEL:-gemma4}

@@ -16,7 +16,7 @@ consequence:
     api-key: ${AGENT_API_KEY:}
 
     # Model name to send in the request body.
-    model: ${AGENT_MODEL:llama3}
+    model: ${AGENT_MODEL:gemma4}
 
     # HTTP call timeout in seconds.
     timeout-seconds: ${AGENT_TIMEOUT_SECONDS:60}
