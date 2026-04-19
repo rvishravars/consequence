@@ -6,7 +6,6 @@ import argparse
 import asyncio
 import sys
 
-import anthropic
 
 from consequence.eval import run_suite
 from consequence.reporter import print_suite_report
@@ -25,8 +24,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--model",
-        default="claude-3-5-haiku-20241022",
-        help="Anthropic model to use for the agent",
+        default="gemma4",
+        help="OpenAI-compatible model to use (e.g. gemma4)",
     )
     parser.add_argument(
         "--pass-threshold",
@@ -47,13 +46,13 @@ async def _run(args: argparse.Namespace) -> int:
     if args.suite in ("database", "all"):
         suites_to_run.append(database_suite)
 
-    client = anthropic.AsyncAnthropic()
+    client = None # run_suite will create AsyncOpenAI default if None
     any_failed = False
 
     for suite in suites_to_run:
         report = await run_suite(
             suite=suite,
-            anthropic_client=client,
+            client=client,
             model=args.model,
             pass_threshold=args.pass_threshold,
         )

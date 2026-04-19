@@ -1,29 +1,34 @@
-"""MCP-backed LLM agent (Anthropic Claude)."""
+"""MCP-backed LLM agent (OpenAI-compatible / Gemma)."""
 
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
-import anthropic
+from openai import AsyncOpenAI
 from mcp import ClientSession
 
 from consequence.types import ToolCallRecord
 
-_DEFAULT_MODEL = "claude-3-5-haiku-20241022"
+_DEFAULT_MODEL = "gemma4"
+_DEFAULT_BASE_URL = os.environ.get("AGENT_BASE_URL", "http://localhost:11434/v1")
 _MAX_ITERATIONS = 10
 
 
-def _mcp_tools_to_anthropic(tools: list[Any]) -> list[dict[str, Any]]:
-    """Convert MCP tool definitions to Anthropic tool format."""
+def _mcp_tools_to_openai(tools: list[Any]) -> list[dict[str, Any]]:
+    """Convert MCP tool definitions to OpenAI tool format."""
     result = []
     for tool in tools:
         schema = tool.inputSchema if hasattr(tool, "inputSchema") else {}
         result.append(
             {
-                "name": tool.name,
-                "description": tool.description or "",
-                "input_schema": schema,
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description or "",
+                    "parameters": schema,
+                },
             }
         )
     return result
@@ -34,83 +39,72 @@ async def run_agent(
     user_message: str,
     system_prompt: str,
     model: str = _DEFAULT_MODEL,
-    anthropic_client: anthropic.AsyncAnthropic | None = None,
+    client: AsyncOpenAI | None = None,
     max_iterations: int = _MAX_ITERATIONS,
 ) -> tuple[str, list[ToolCallRecord]]:
-    """Run an agentic loop against an MCP server and return the final reply.
+    """Run an agentic loop against an MCP server using an OpenAI-compatible API.
 
     Args:
         session: An initialised MCP ``ClientSession``.
         user_message: The user's input message.
         system_prompt: System prompt sent to the LLM.
-        model: Anthropic model name.
-        anthropic_client: Optional pre-built ``AsyncAnthropic`` client.
+        model: Model name (e.g. gemma4).
+        client: Optional pre-built ``AsyncOpenAI`` client.
         max_iterations: Maximum number of LLM turns before forcing a stop.
 
     Returns:
         A tuple of (final text reply, list of tool calls made).
     """
-    client = anthropic_client or anthropic.AsyncAnthropic()
+    ai_client = client or AsyncOpenAI(base_url=_DEFAULT_BASE_URL, api_key="not-needed")
 
     tools_response = await session.list_tools()
-    anthropic_tools = _mcp_tools_to_anthropic(tools_response.tools)
+    openai_tools = _mcp_tools_to_openai(tools_response.tools)
 
-    messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_message},
+    ]
     tool_calls_made: list[ToolCallRecord] = []
 
     for _ in range(max_iterations):
-        response = await client.messages.create(
+        response = await ai_client.chat.completions.create(
             model=model,
-            max_tokens=4096,
-            system=system_prompt,
-            tools=anthropic_tools,
             messages=messages,
+            tools=openai_tools if openai_tools else None,
         )
 
-        # Append assistant turn to conversation
-        messages.append({"role": "assistant", "content": response.content})
+        message = response.choices[0].message
+        messages.append(message)
 
-        if response.stop_reason == "end_turn":
-            # Extract final text reply
-            for block in response.content:
-                if hasattr(block, "text"):
-                    return block.text, tool_calls_made
-            return "", tool_calls_made
+        if not message.tool_calls:
+            return message.content or "", tool_calls_made
 
-        if response.stop_reason == "tool_use":
-            tool_results = []
-            for block in response.content:
-                if block.type != "tool_use":
-                    continue
+        # Handle tool calls
+        for tool_call in message.tool_calls:
+            name = tool_call.function.name
+            args = json.loads(tool_call.function.arguments)
 
-                tool_result = await session.call_tool(block.name, block.input or {})
-                content_parts = tool_result.content or []
-                result_text = " ".join(
-                    c.text for c in content_parts if hasattr(c, "text")
+            tool_result = await session.call_tool(name, args)
+            content_parts = tool_result.content or []
+            result_text = " ".join(
+                c.text for c in content_parts if hasattr(c, "text")
+            )
+
+            tool_calls_made.append(
+                ToolCallRecord(
+                    name=name,
+                    arguments=args,
+                    result=result_text,
                 )
+            )
 
-                tool_calls_made.append(
-                    ToolCallRecord(
-                        name=block.name,
-                        arguments=block.input or {},
-                        result=result_text,
-                    )
-                )
-                tool_results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": result_text,
-                    }
-                )
-
-            messages.append({"role": "user", "content": tool_results})
-            continue
-
-        # Unexpected stop reason – return whatever text is available
-        for block in response.content:
-            if hasattr(block, "text"):
-                return block.text, tool_calls_made
-        return "", tool_calls_made
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": name,
+                    "content": result_text,
+                }
+            )
 
     return "Max iterations reached without a final answer.", tool_calls_made

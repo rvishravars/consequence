@@ -6,7 +6,7 @@ import time
 from typing import Any, Callable, Coroutine
 
 import anyio
-import anthropic
+from openai import AsyncOpenAI
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.memory import create_connected_server_and_client_session
 
@@ -20,8 +20,8 @@ _DEFAULT_PASS_THRESHOLD = 0.5
 async def run_eval(
     task: EvalTask,
     server: FastMCP,
-    anthropic_client: anthropic.AsyncAnthropic | None = None,
-    model: str = "claude-3-5-haiku-20241022",
+    client: AsyncOpenAI | None = None,
+    model: str = "gemma4",
     pass_threshold: float = _DEFAULT_PASS_THRESHOLD,
 ) -> EvalResult:
     """Run a single :class:`EvalTask` against an MCP server.
@@ -30,8 +30,8 @@ async def run_eval(
         task: The evaluation task to run.
         server: A :class:`~mcp.server.fastmcp.FastMCP` server with the tools
             the agent should use.
-        anthropic_client: Optional pre-built Anthropic client.
-        model: The Anthropic model identifier.
+        client: Optional pre-built OpenAI-compatible client.
+        model: The model identifier (e.g. gemma4).
         pass_threshold: Minimum score (0–1) to mark a result as passed.
 
     Returns:
@@ -45,7 +45,7 @@ async def run_eval(
                 user_message=task.user_message,
                 system_prompt=task.system_prompt,
                 model=model,
-                anthropic_client=anthropic_client,
+                client=client,
             )
     except Exception as exc:  # noqa: BLE001
         latency = time.monotonic() - start
@@ -105,8 +105,8 @@ class EvalSuite:
 
     async def run(
         self,
-        anthropic_client: anthropic.AsyncAnthropic | None = None,
-        model: str = "claude-3-5-haiku-20241022",
+        client: AsyncOpenAI | None = None,
+        model: str = "gemma4",
         pass_threshold: float = _DEFAULT_PASS_THRESHOLD,
     ) -> SuiteReport:
         """Run all tasks and return a :class:`SuiteReport`."""
@@ -116,7 +116,7 @@ class EvalSuite:
             result = await run_eval(
                 task=task,
                 server=server,
-                anthropic_client=anthropic_client,
+                client=client,
                 model=model,
                 pass_threshold=pass_threshold,
             )
@@ -143,13 +143,13 @@ class EvalSuite:
 
 async def run_suite(
     suite: EvalSuite,
-    anthropic_client: anthropic.AsyncAnthropic | None = None,
-    model: str = "claude-3-5-haiku-20241022",
+    client: AsyncOpenAI | None = None,
+    model: str = "gemma4",
     pass_threshold: float = _DEFAULT_PASS_THRESHOLD,
 ) -> SuiteReport:
     """Convenience wrapper to run a suite (mirrors :meth:`EvalSuite.run`)."""
     return await suite.run(
-        anthropic_client=anthropic_client,
+        client=client,
         model=model,
         pass_threshold=pass_threshold,
     )

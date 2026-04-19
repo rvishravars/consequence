@@ -10,14 +10,14 @@ An **MCP-backed agent evaluation framework** for testing LLM agents that use the
 
 ### Overview
 
-`consequence` lets you define evaluation tasks, run an Anthropic Claude agent against a live MCP server, and score the results — all in a few lines of Python.
+`consequence` lets you define evaluation tasks, run a local agent (like **Gemma 4**) against a live MCP server, and score the results — all in a few lines of Python.
 
 ```
 EvalTask → EvalSuite → run_suite() → SuiteReport
                 ↓
          FastMCP Server (in-process)
                 ↓
-         Anthropic Claude Agent
+         Local Agent (Gemma 4 / Ollama)
                 ↓
          Scoring (metrics)
 ```
@@ -28,10 +28,11 @@ EvalTask → EvalSuite → run_suite() → SuiteReport
 pip install consequence
 ```
 
-Set your Anthropic API key:
+Set your model configuration (defaults to Ollama):
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export AGENT_BASE_URL=http://localhost:11434/v1
+export AGENT_MODEL=gemma4
 ```
 
 ### Quick Start
@@ -46,14 +47,14 @@ sudo docker compose run --rm python-eval
 sudo docker compose run --rm python-eval --suite calculator
 
 # Use a different model
-sudo docker compose run --rm python-eval --suite database --model claude-3-5-sonnet-20241022
+sudo docker compose run --rm python-eval --suite database --model gemma4:9b
 ```
 
 #### Use the Python API
 
 ```python
 import asyncio
-import anthropic
+from openai import AsyncOpenAI
 from mcp.server.fastmcp import FastMCP
 from consequence import EvalTask, EvalSuite, run_suite
 
@@ -85,8 +86,8 @@ suite = EvalSuite(
 
 # 3. Run evals
 async def main():
-    client = anthropic.AsyncAnthropic()
-    report = await run_suite(suite, anthropic_client=client)
+    client = AsyncOpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+    report = await run_suite(suite, client=client, model="gemma4")
     print(f"Passed: {report.passed}/{report.total}, avg score: {report.avg_score:.2f}")
 
 asyncio.run(main())

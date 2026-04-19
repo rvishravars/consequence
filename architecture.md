@@ -4,7 +4,7 @@ This document visualises the architecture of the **consequence** evaluation tool
 
 ## Python: MCP-Backed Agent Evaluation
 
-The Python component is designed to evaluate Anthropic Claude agents interacting with Model Context Protocol (MCP) servers. It orchestrates the entire flow from defining tasks to interacting with the agent and scoring the final output.
+The Python component is designed to evaluate agents (like **Gemma 4**) interacting with Model Context Protocol (MCP) servers. It orchestrates the entire flow from defining tasks to interacting with the agent and scoring the final output.
 
 ```mermaid
 flowchart TD
@@ -17,7 +17,7 @@ flowchart TD
     
     subgraph Execution Loop
         Runner -- "Hosts" --> MCP["FastMCP Server<br/>(in-process)"]
-        Runner -- "Prompts" --> Agent[Anthropic Claude Agent]
+        Runner -- "Prompts" --> Agent[Local Agent<br/>Gemma 4 / Ollama]
         
         Agent -- "Tool calls" --> MCP
         MCP -- "Tool results" --> Agent
