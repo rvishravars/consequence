@@ -1,0 +1,24 @@
+services:
+  java-cli:
+    build:
+      context: ./cli-java
+      dockerfile: Dockerfile
+    volumes:
+      - .:/data
+    working_dir: /data
+    environment:
+      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://localhost:11434/v1}
+      - AGENT_API_KEY=${AGENT_API_KEY:-}
+      - AGENT_MODEL=${AGENT_MODEL:-llama3}
+
+  python-eval:
+    build:
+      context: ./evaluator-python
+      dockerfile: Dockerfile
+    volumes:
+      - .:/data
+    working_dir: /data
+    env_file:
+      - .env
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}

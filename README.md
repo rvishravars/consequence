@@ -1,6 +1,6 @@
 # consequence
 
-A multi-language agent evaluation toolkit.
+A multi-language agent evaluation toolkit using a monorepo structure. Ensure you run `sudo docker compose build` from the root directory to build the tools before using them.
 
 ---
 
@@ -36,17 +36,17 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 ### Quick Start
 
-#### Run built-in suites via CLI
+#### Run built-in suites via Docker Compose
 
 ```bash
 # Run all built-in eval suites
-consequence
+sudo docker compose run --rm python-eval
 
 # Run only the calculator suite
-consequence --suite calculator
+sudo docker compose run --rm python-eval --suite calculator
 
 # Use a different model
-consequence --suite database --model claude-3-5-sonnet-20241022
+sudo docker compose run --rm python-eval --suite database --model claude-3-5-sonnet-20241022
 ```
 
 #### Use the Python API
@@ -141,28 +141,31 @@ from consequence.evals import calculator_suite, database_suite
 ### Python Project Structure
 
 ```
-src/consequence/
-├── __init__.py        # Public API
-├── agent.py           # MCP-backed LLM agentic loop
-├── eval.py            # Evaluation orchestration (EvalSuite, run_eval)
-├── metrics.py         # Scoring functions
-├── reporter.py        # Rich-formatted output
-├── cli.py             # CLI entry point
-├── types.py           # EvalTask, EvalResult, SuiteReport
-├── servers/
-│   ├── calculator.py  # Built-in calculator MCP server
-│   └── database.py    # Built-in mock database MCP server
-└── evals/
-    ├── calculator.py  # Built-in calculator eval suite
-    └── database.py    # Built-in database eval suite
-tests/
-├── test_eval.py       # Integration tests
-└── test_metrics.py    # Unit tests for scoring metrics
+evaluator-python/
+├── src/consequence/
+│   ├── __init__.py        # Public API
+│   ├── agent.py           # MCP-backed LLM agentic loop
+│   ├── eval.py            # Evaluation orchestration (EvalSuite, run_eval)
+│   ├── metrics.py         # Scoring functions
+│   ├── reporter.py        # Rich-formatted output
+│   ├── cli.py             # CLI entry point
+│   ├── types.py           # EvalTask, EvalResult, SuiteReport
+│   ├── servers/
+│   │   ├── calculator.py  # Built-in calculator MCP server
+│   │   └── database.py    # Built-in mock database MCP server
+│   └── evals/
+│       ├── calculator.py  # Built-in calculator eval suite
+│       └── database.py    # Built-in database eval suite
+├── tests/
+│   ├── test_eval.py       # Integration tests
+│   └── test_metrics.py    # Unit tests for scoring metrics
+└── pyproject.toml
 ```
 
-### Python Development
+### Python Local Development
 
 ```bash
+cd evaluator-python/
 pip install -e ".[dev]"
 pytest
 ```
@@ -171,7 +174,7 @@ pytest
 
 ## Java: Agent Eval CLI
 
-Agent evaluation tool – a CLI built with **Java 17**, **Spring Shell**, and **Maven**.
+Agent evaluation tool – a CLI built with **Java 25**, **Spring Shell**, and **Maven**.
 
 Point it at any [OpenAI-compatible](https://platform.openai.com/docs/api-reference/chat) chat-completions endpoint (e.g. Ollama, OpenAI, vLLM) and run structured evaluation suites to measure agent quality.
 
@@ -179,20 +182,38 @@ Point it at any [OpenAI-compatible](https://platform.openai.com/docs/api-referen
 
 | Tool | Version |
 |------|---------|
-| JDK  | 17+     |
+| JDK  | 25+     |
 | Maven | 3.8+   |
+| Docker| 20+    |
 
-### Build
+### Quick Start via Docker Compose
 
 ```bash
-mvn clean package -q
+# Get help and commands
+sudo docker compose run --rm java-cli help
+
+# List eval cases from sample-eval.json at the repo root
+sudo docker compose run --rm java-cli eval list --suite sample-eval.json
+
+# Run the eval suite
+sudo docker compose run --rm java-cli eval run --suite sample-eval.json
+
+# Run and print detailed report
+sudo docker compose run --rm java-cli eval report --suite sample-eval.json
 ```
 
-This produces a self-contained fat-jar at `target/consequence-0.1.0-SNAPSHOT.jar`.
+### Local Development (Without Docker)
+
+Navigate specifically to the Java directory:
+```bash
+cd cli-java/
+mvn clean package -q
+java -jar target/consequence-0.1.0-SNAPSHOT.jar eval run --suite ../sample-eval.json
+```
 
 ### Configuration
 
-Configuration is read from `src/main/resources/application.yml` or from environment variables:
+Configuration is read from `cli-java/src/main/resources/application.yml` or from environment variables:
 
 | Environment variable       | Default                          | Description                              |
 |---------------------------|----------------------------------|------------------------------------------|
@@ -200,31 +221,6 @@ Configuration is read from `src/main/resources/application.yml` or from environm
 | `AGENT_API_KEY`           | *(empty)*                        | Bearer token / API key (optional)         |
 | `AGENT_MODEL`             | `llama3`                         | Model name sent in the request body       |
 | `AGENT_TIMEOUT_SECONDS`   | `60`                             | HTTP call timeout                         |
-
-### Usage
-
-#### Interactive shell
-
-```bash
-java -jar target/consequence-0.1.0-SNAPSHOT.jar
-```
-
-```
-shell:> eval list --suite sample-eval.json
-shell:> eval run  --suite sample-eval.json
-shell:> eval report --suite sample-eval.json
-```
-
-#### Non-interactive (script mode)
-
-```bash
-java -jar target/consequence-0.1.0-SNAPSHOT.jar \
-     --spring.shell.interactive.enabled=false    \
-     --spring.shell.script.enabled=true          \
-     eval run --suite path/to/my-suite.json
-```
-
-### Eval suite format
 
 An eval suite is a JSON array of evaluation cases:
 

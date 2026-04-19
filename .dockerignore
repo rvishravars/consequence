@@ -1,0 +1,7 @@
+target/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.git/
+.vscode/
