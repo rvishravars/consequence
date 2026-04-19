@@ -38,8 +38,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 async def _run(args: argparse.Namespace) -> int:
-    from evals.calculator import calculator_suite
-    from evals.database import database_suite
+    from consequence.evals.calculator import calculator_suite
+    from consequence.evals.database import database_suite
 
     suites_to_run = []
     if args.suite in ("calculator", "all"):

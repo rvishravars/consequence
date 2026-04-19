@@ -119,7 +119,7 @@ from consequence.servers import make_calculator_server, make_database_server
 ## Built-in Eval Suites
 
 ```python
-from evals import calculator_suite, database_suite
+from consequence.evals import calculator_suite, database_suite
 ```
 
 ## Scoring Metrics
@@ -146,7 +146,7 @@ src/consequence/
 └── servers/
     ├── calculator.py  # Built-in calculator MCP server
     └── database.py    # Built-in mock database MCP server
-evals/
+src/consequence/evals/
 ├── calculator.py      # Built-in calculator eval suite
 └── database.py        # Built-in database eval suite
 tests/
