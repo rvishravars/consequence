@@ -54,7 +54,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "check_job_status",
-            "description": "Check the status of a specific single evaluation job. You MUST have a specific UUID job_id to use this.",
+            "description": "Check the status, get the details, or get the full report of a specific single evaluation job. You MUST have a specific UUID job_id to use this.",
             "parameters": {
                 "type": "object",
                 "properties": {

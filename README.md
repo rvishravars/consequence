@@ -58,10 +58,14 @@ sudo docker compose run --rm -it copilot-cli
 ```
 
 **3. Run the evaluation by talking to the Copilot:**
-Once the REPL loads, just type:
-> *"Run the calculator suite using the default agent."*
+Once the REPL loads, try asking it to run evaluations, check job statuses, or manage your history:
 
-The Copilot will parse your request, trigger the isolated evaluation in the backend, and present the results when they finish!
+> *"Run the calculator suite using the default agent."*
+> *"List all my active or past evaluation jobs."*
+> *"Get the complete report for job [UUID]."*
+> *"Delete all my job history, please."*
+
+The Copilot will interpret your request, trigger the isolated evaluation in the backend, and optionally present the formatted JSON results directly in your terminal when they finish!
 
 #### Use the Python API
 
