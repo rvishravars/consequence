@@ -22,33 +22,34 @@ EvalTask → EvalSuite → run_suite() → SuiteReport
          Scoring (metrics)
 ```
 
-### Installation
+### Getting Started
 
+The recommended way to run `consequence` is via **Docker Compose**, which ensures all language runtimes (Java, Python) and dependencies are correctly isolated and configured.
+
+To build the environment:
 ```bash
-pip install consequence
-```
-
-Set your model configuration (defaults to Ollama):
-
-```bash
-export AGENT_BASE_URL=http://localhost:11434/v1
-export AGENT_MODEL=gemma4
+sudo docker compose build
 ```
 
 ### Quick Start
 
-#### Run built-in suites via Docker Compose
+The easiest way to test the sample agent (which uses the `calculator` tool) is via Docker Compose and the new interactive Copilot CLI.
 
+**1. Start the Evaluation Engine in the background:**
 ```bash
-# Run all built-in eval suites
-sudo docker compose run --rm python-eval
-
-# Run only the calculator suite
-sudo docker compose run --rm python-eval --suite calculator
-
-# Use a different model
-sudo docker compose run --rm python-eval --suite database --model gemma4:9b
+sudo docker compose up -d python-eval-backend
 ```
+
+**2. Launch the interactive Copilot CLI:**
+```bash
+sudo docker compose run --rm -it copilot-cli
+```
+
+**3. Run the evaluation by talking to the Copilot:**
+Once the REPL loads, just type:
+> *"Run the calculator suite using the default agent."*
+
+The Copilot will parse your request, trigger the isolated evaluation in the backend, and present the results when they finish!
 
 #### Use the Python API
 
@@ -56,7 +57,8 @@ sudo docker compose run --rm python-eval --suite database --model gemma4:9b
 import asyncio
 from openai import AsyncOpenAI
 from mcp.server.fastmcp import FastMCP
-from consequence import EvalTask, EvalSuite, run_suite
+from evaluator.orchestrator import EvalSuite, run_suite
+from evaluator.types import EvalTask
 
 # 1. Define a FastMCP server with your tools
 def make_server() -> FastMCP:
@@ -96,7 +98,7 @@ asyncio.run(main())
 #### Custom evaluators
 
 ```python
-from consequence.types import EvalResult, EvalTask
+from evaluator.types import EvalResult, EvalTask
 
 def my_evaluator(result: EvalResult) -> float:
     if result.error:
@@ -117,16 +119,18 @@ task = EvalTask(
 | Server | Tools |
 |--------|-------|
 | `calculator` | `add`, `subtract`, `multiply`, `divide`, `power` |
-| `database` | `get_product`, `search_products`, `check_stock`, `get_employee`, `list_employees_by_department` |
 
 ```python
-from consequence.servers import make_calculator_server, make_database_server
+from eval.servers import make_calculator_server
 ```
 
 ### Built-in Eval Suites
 
 ```python
-from consequence.evals import calculator_suite, database_suite
+# Built-in suites are registered in the eval.suites package
+from evaluator.registry import get_suite, discover_plugins
+discover_plugins("eval.suites")
+calculator_suite = get_suite("calculator")
 ```
 
 ### Scoring Metrics
@@ -158,138 +162,71 @@ export JUDGE_API_KEY=...           # optional
 Run the CLI with the `--llm-judge` flag:
 
 ```bash
-sudo docker compose run --rm python-eval --llm-judge
+# Use the LLM judge via the Copilot CLI
+# In the REPL: "Run the calculator suite using the LLM judge"
 ```
+
+### Documentation
+
+Detailed documentation for the project is available in the `docs/` directory:
+
+- [Architecture Guide](docs/architecture.md): Visual diagrams and technical overview of the system.
+- [Python Evaluator Guide](docs/python-evaluator.md): Deep dive into the Python-side execution engine, core modules, and metric definitions.
 
 ### Python Project Structure
 
 ```
-evaluator-python/
-├── src/consequence/
-│   ├── __init__.py        # Public API
-│   ├── agent.py           # MCP-backed LLM agentic loop
-│   ├── eval.py            # Evaluation orchestration (EvalSuite, run_eval)
-│   ├── metrics.py         # Scoring functions
-│   ├── reporter.py        # Rich-formatted output
-│   ├── cli.py             # CLI entry point
-│   ├── types.py           # EvalTask, EvalResult, SuiteReport
-│   ├── servers/
-│   │   ├── calculator.py  # Built-in calculator MCP server
-│   │   └── database.py    # Built-in mock database MCP server
-│   └── evals/
-│       ├── calculator.py  # Built-in calculator eval suite
-│       └── database.py    # Built-in database eval suite
-├── tests/
-│   ├── test_eval.py       # Integration tests
-│   └── test_metrics.py    # Unit tests for scoring metrics
-└── pyproject.toml
+consequence/
+├── evaluator/     # [L1+L2: PLATFORM] API, CLI, Orchestrator, Metrics
+├── eval/          # [L3: CONTENT] Suites, Servers, Agent Loop, Runners
+├── copilot_cli/   # Interactive AI Copilot Control Plane
+├── docs/          # Technical documentation
+├── scripts/       # Automation and demo scripts
+├── tests/         # Unit and integration tests
+├── pyproject.toml # Project configuration
+├── Dockerfile     # Docker build context
+└── docker-compose.yml
 ```
+
+### Quick Start (CPU Demo)
+
+To verify the entire 3-tier architecture is functional on a memory-constrained (CPU) environment:
+
+```bash
+./scripts/run_cpu_demo.sh
+```
+
+---
 
 ### Python Local Development
 
 ```bash
-cd evaluator-python/
+# Install dependencies from the root
 pip install -e ".[dev]"
 pytest
 ```
 
 ---
 
-## Java: Agent Eval CLI
+## Interactive Copilot Console
 
-Agent evaluation tool – a CLI built with **Java 25**, **Spring Shell**, and **Maven**.
-
-Point it at any [OpenAI-compatible](https://platform.openai.com/docs/api-reference/chat) chat-completions endpoint (e.g. Ollama, OpenAI, vLLM) and run structured evaluation suites to measure agent quality.
-
-### Requirements
-
-| Tool | Version |
-|------|---------|
-| JDK  | 25+     |
-| Maven | 3.8+   |
-| Docker| 20+    |
+The Pyhton-based Copilot CLI acts as a unified control plane. It does not perform evaluations itself; instead, it orchestrates the **Python Evaluation Engine** via natural language.
 
 ### Quick Start via Docker Compose
 
 ```bash
-# Get help and commands
-sudo docker compose run --rm java-cli help
+# 1. Ensure the backend is running
+sudo docker compose up -d python-eval-backend
 
-# List eval cases from sample-eval.json at the repo root
-sudo docker compose run --rm java-cli eval list --suite sample-eval.json
-
-# Run the eval suite
-sudo docker compose run --rm java-cli eval run --suite sample-eval.json
-
-# Run and print detailed report
-sudo docker compose run --rm java-cli eval report --suite sample-eval.json
-```
-
-### Local Development (Without Docker)
-
-Navigate specifically to the Java directory:
-```bash
-cd cli-java/
-mvn clean package -q
-java -jar target/consequence-0.1.0-SNAPSHOT.jar eval run --suite ../sample-eval.json
+# 2. Start the copilot loop
+sudo docker compose run --rm -it copilot-cli
 ```
 
 ### Configuration
 
-Configuration is read from `cli-java/src/main/resources/application.yml` or from environment variables:
+Environment variables (passed to the copilot-cli service):
 
 | Environment variable       | Default                          | Description                              |
 |---------------------------|----------------------------------|------------------------------------------|
-| `AGENT_BASE_URL`          | `http://localhost:11434/v1`      | Base URL of the chat-completions endpoint |
-| `AGENT_API_KEY`           | *(empty)*                        | Bearer token / API key (optional)         |
-| `AGENT_MODEL`             | `llama3`                         | Model name sent in the request body       |
-| `AGENT_TIMEOUT_SECONDS`   | `60`                             | HTTP call timeout                         |
-
-An eval suite is a JSON array of evaluation cases:
-
-```json
-[
-  {
-    "id": "c1",
-    "description": "Greeting check",
-    "input": "Say hello in one word.",
-    "expectedOutput": "hello",
-    "scoringMethod": "CONTAINS"
-  },
-  {
-    "id": "c2",
-    "description": "Exact capital city",
-    "input": "What is the capital of France? One word.",
-    "expectedOutput": "Paris",
-    "scoringMethod": "EXACT"
-  },
-  {
-    "id": "c3",
-    "description": "Phone number regex",
-    "input": "Give me a US phone number example.",
-    "expectedPattern": "\\d{3}[-.\\s]?\\d{3}[-.\\s]?\\d{4}",
-    "scoringMethod": "REGEX"
-  },
-  {
-    "id": "c4",
-    "description": "Free-form (always passes)",
-    "input": "Tell me a fun fact.",
-    "scoringMethod": "NONE"
-  }
-]
-```
-
-### Scoring methods
-
-| Method     | Description |
-|------------|-------------|
-| `CONTAINS` | Pass if the agent response contains `expectedOutput` (case-insensitive) |
-| `EXACT`    | Pass if the agent response equals `expectedOutput` after trimming (case-insensitive) |
-| `REGEX`    | Pass if the agent response matches `expectedPattern` |
-| `NONE`     | Always pass – useful for manual review or latency-only benchmarks |
-
-### Run tests
-
-```bash
-mvn test
-```
+| `PYTHON_EVAL_URL`         | `http://python-eval-backend:8000`| Python API endpoint                       |
+| `AGENT_MODEL`             | `gemma4`                         | Model name for the Copilot & Agent         |

@@ -1,31 +1,58 @@
 services:
-  java-cli:
+  copilot-cli:
     build:
-      context: ./cli-java
+      context: .
       dockerfile: Dockerfile
+    entrypoint: consequence-copilot
+    stdin_open: true
+    tty: true
     volumes:
       - .:/data
+      - ./copilot_cli:/app/copilot_cli
     working_dir: /data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://host.docker.internal:11434/v1}
+      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://172.17.0.1:11434/v1}
       - AGENT_API_KEY=${AGENT_API_KEY:-}
-      - AGENT_MODEL=${AGENT_MODEL:-gemma4}
+      - AGENT_MODEL=${AGENT_MODEL:-llama3.2:1b}
+      - PYTHON_EVAL_URL=http://python-eval-backend:8000
+    networks:
+      - consequence_net
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
 
-  python-eval:
+  python-eval-backend:
+    container_name: python-eval-backend
     build:
-      context: ./evaluator-python
+      context: .
       dockerfile: Dockerfile
     volumes:
       - .:/data
+      - ./evaluator:/app/evaluator
+      - ./eval:/app/eval
     working_dir: /data
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://host.docker.internal:11434/v1}
-      - AGENT_MODEL=${AGENT_MODEL:-gemma4}
-      - JUDGE_BASE_URL=${JUDGE_BASE_URL:-http://host.docker.internal:11434/v1}
-      - JUDGE_MODEL=${JUDGE_MODEL:-llama3.2}
+      - AGENT_BASE_URL=${AGENT_BASE_URL:-http://172.17.0.1:11434/v1}
+      - AGENT_MODEL=${AGENT_MODEL:-llama3.2:1b}
+      - JUDGE_BASE_URL=${JUDGE_BASE_URL:-http://172.17.0.1:11434/v1}
+      - JUDGE_MODEL=${JUDGE_MODEL:-llama3.2:1b}
+      - PYTHONPATH=/app
+    networks:
+      - consequence_net
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+
+networks:
+  consequence_net:
+    driver: bridge
