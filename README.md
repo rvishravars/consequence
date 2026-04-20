@@ -22,6 +22,18 @@ EvalTask → EvalSuite → run_suite() → SuiteReport
          Scoring (metrics)
 ```
 
+### Prerequisites
+
+Before running the evaluation framework, ensure your system has the following installed and configured:
+
+1. **Docker & Docker Compose**: The entire project executes within containerized environments.
+2. **Ollama**: A local LLM runner must be active (usually at `http://localhost:11434`).
+3. **Local Models**: You must pull the models you intend to use for evaluation and judging.
+   ```bash
+   ollama pull llama3.2:1b
+   ollama pull gemma4
+   ```
+
 ### Getting Started
 
 The recommended way to run `consequence` is via **Docker Compose**, which ensures all language runtimes (Java, Python) and dependencies are correctly isolated and configured.
