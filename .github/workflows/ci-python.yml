@@ -3,11 +3,19 @@ name: Python CI
 on:
   push:
     paths:
-      - 'evaluator-python/**'
+      - 'evaluator/**'
+      - 'eval/**'
+      - 'copilot_cli/**'
+      - 'tests/**'
+      - 'pyproject.toml'
       - '.github/workflows/ci-python.yml'
   pull_request:
     paths:
-      - 'evaluator-python/**'
+      - 'evaluator/**'
+      - 'eval/**'
+      - 'copilot_cli/**'
+      - 'tests/**'
+      - 'pyproject.toml'
       - '.github/workflows/ci-python.yml'
 
 jobs:
@@ -15,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./evaluator-python
+        working-directory: .
 
     steps:
       - uses: actions/checkout@v4
