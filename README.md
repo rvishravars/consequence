@@ -1,6 +1,4 @@
-# consequence
-
-A multi-language agent evaluation toolkit using a monorepo structure. Ensure you run `sudo docker compose build` from the root directory to build the tools before using them.
+A Python-native agent evaluation toolkit using a monorepo structure. Ensure you run `sudo docker compose build` from the root directory to build the tools before using them.
 
 ---
 
@@ -22,6 +20,24 @@ EvalTask → EvalSuite → run_suite() → SuiteReport
          Scoring (metrics)
 ```
 
+### 3-Tier Architecture
+
+The engine is divided into three distinct layers to ensure separation of concerns and maintainability:
+
+#### 1+2. Platform Layer (`evaluator/`)
+- **API (`evaluator.api`)**: A FastAPI-based REST interface that orchestrates evaluation jobs.
+- **CLI (`evaluator.main`)**: The command-line interface for running evaluations locally.
+- **Orchestrator**: The core logic that manages evaluation lifecycles, spawns isolated subprocesses, and aggregates results.
+- **Registry**: A dynamic discovery system for registering and retrieving evaluation suites and agent implementations.
+- **Metrics**: Standard scoring functions (exact match, contains, numeric, etc.).
+- **Persistence**: Manages results in `jobs_db.json`.
+
+#### 3. Content Layer (`eval/`)
+- **Suites**: Definitions of evaluation tasks and their expected outcomes.
+- **Servers**: Contains the implementation of mock MCP servers (e.g., `calculator`) used for testing.
+- **Agent Loop**: The logic for running an LLM agent against an MCP server.
+- **Runners**: Isolated entry points (`agent_runner`, `judge_runner`) for process-level safety.
+
 ### Prerequisites
 
 Before running the evaluation framework, ensure your system has the following installed and configured:
@@ -34,9 +50,7 @@ Before running the evaluation framework, ensure your system has the following in
    ollama pull gemma4
    ```
 
-### Getting Started
-
-The recommended way to run `consequence` is via **Docker Compose**, which ensures all language runtimes (Java, Python) and dependencies are correctly isolated and configured.
+The recommended way to run `consequence` is via **Docker Compose**, which ensures all dependencies and Python runtimes are correctly isolated and configured.
 
 To build the environment:
 ```bash
@@ -140,6 +154,29 @@ task = EvalTask(
 from eval.servers import make_calculator_server
 ```
 
+### Defining an Evaluation Suite
+
+Suites are defined in `eval/suites/`. A suite consists of a server factory and a list of `EvalTask` objects. Use `register_suite` to make them discoverable.
+
+```python
+from evaluator.orchestrator import EvalSuite
+from evaluator.types import EvalTask
+from evaluator.registry import register_suite
+from eval.servers.calculator import make_calculator_server
+
+calculator_suite = register_suite(EvalSuite(
+    name="calculator",
+    server_factory=make_calculator_server,
+    tasks=[
+        EvalTask(
+            id="task_1",
+            user_message="What is 5 + 5?",
+            expected_output="10",
+        ),
+    ],
+))
+```
+
 ### Built-in Eval Suites
 
 ```python
@@ -184,10 +221,7 @@ Run the CLI with the `--llm-judge` flag:
 
 ### Documentation
 
-Detailed documentation for the project is available in the `docs/` directory:
-
 - [Architecture Guide](docs/architecture.md): Visual diagrams and technical overview of the system.
-- [Python Evaluator Guide](docs/python-evaluator.md): Deep dive into the Python-side execution engine, core modules, and metric definitions.
 
 ### Python Project Structure
 
@@ -212,6 +246,10 @@ To verify the entire 3-tier architecture is functional on a memory-constrained (
 ./scripts/run_cpu_demo.sh
 ```
 
+### Persistence
+
+Evaluation results are stored in `jobs_db.json` at the root of the project. Each entry contains the job status, a full report of each task, and any errors encountered during the run.
+
 ---
 
 ### Python Local Development
@@ -220,6 +258,9 @@ To verify the entire 3-tier architecture is functional on a memory-constrained (
 # Install dependencies from the root
 pip install -e ".[dev]"
 pytest
+
+# Run evaluations directly via Python CLI
+consequence --suite calculator --model llama3.2:1b
 ```
 
 ---
